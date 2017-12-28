@@ -1,0 +1,93 @@
+version: "3.3"
+
+
+networks:
+  backtier:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
+
+volumes:
+  tomcat-volume:
+  nginx-volume:
+
+services:
+  tomcat-volume:
+    build:
+      context: /vagrant/tomcat-volume/
+    image: tomcat-vol
+    container_name: tomcat-volume
+    volumes:
+      - tomcat-volume:/opt/tomcat/webapps/
+        
+
+  nginx-volume:
+    build: 
+      context: /vagrant/nginx-volume/
+    image: nginx-vol
+    container_name: nginx-volume
+    volumes:
+      - nginx-volume:/etc/nginx/conf.d/
+
+  tomcat:
+    build: 
+      context: /vagrant/tomcat/
+    depends_on:
+      - tomcat-volume
+    image: tomcat-comp
+    container_name: tomcat
+    networks:
+      backtier:
+        ipv4_address: 172.26.0.10
+    volumes: 
+      - tomcat-volume:/opt/tomcat/webapps/
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "tcp://192.168.56.10:514"
+        tag: "tomcat-sender"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+
+  nginx:
+    build: 
+      context: /vagrant/
+    depends_on:
+      - nginx-volume
+    image: nginx-comp
+    container_name: nginx
+    ports:
+      - 8080:80
+    networks:
+      backtier:
+        ipv4_address: 172.26.0.11
+    volumes: 
+      - nginx-volume:/etc/nginx/conf.d/
+    configs:
+      - source: my_config
+        target: /tmp/test-config.txt
+        uid: '103'
+        gid: '103'
+        mode: 0777
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "tcp://192.168.56.10:514"
+        tag: "nginx-sender"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+
+configs:
+  my_config:
+    file: /vagrant/test.txt
+
+
+  
+
+
+

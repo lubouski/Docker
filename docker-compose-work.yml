@@ -1,0 +1,98 @@
+version: "3"
+networks:
+  backtier:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.26.0.0/16
+
+volumes:
+  tomcat_data:
+  nginx_data:
+
+services:
+  tomcat_data:
+    build:
+      context: /vagrant/tomcat-volume/
+    image: tomcat_data2
+    container_name: tomcat_data
+    volumes:
+      - tomcat_data:/opt/tomcat/webapps/
+        
+
+  nginx_data:
+    build: 
+      context: /vagrant/nginx-volume/
+    image: nginx_data2
+    container_name: nginx_data
+    volumes:
+      - nginx_data:/etc/nginx/conf.d/
+
+  tomcat:
+    build: 
+      context: /vagrant/tomcat/
+    depends_on:
+      - tomcat_data
+    image: tomcat2
+    container_name: tomcat
+    networks:
+      - backtier
+    volumes: 
+      - tomcat_data:/opt/tomcat/webapps/
+    # logging:
+    #   driver: syslog
+    #   options:
+    #     syslog-address: unixgram:///var/log/tomcat/tomcat.soc
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+
+  nginx:
+    build: 
+      context: /vagrant/
+    depends_on:
+      - nginx_data
+    image: nginx2
+    container_name: nginx
+    ports:
+      - 8080:80
+    networks:
+      - backtier
+    volumes: 
+      - nginx_data:/etc/nginx/conf.d/
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+
+# volumes:
+#     tomcat-volume: 
+
+
+
+# services:
+#   tomcat-volume:
+#     build:
+#       context: /vagrant/tomcat-volume/
+#     image: tomcat-volume
+#     container_name: tomcat-volume
+#     volumes: 
+#       - tomcat-volume:/opt/tomcat/webapps/
+  
+#   tomcat-docker:
+#     depends_on:
+#       - tomcat-volume
+#     build: 
+#       context: /vagrant/tomcat/
+#     image: tomcat-docker
+#     container_name: tomcat
+#     networks:
+#       backtier:
+#         ipv4_address: 172.26.0.10
+#     volumes:
+#       - tomcat-volume:/opt/tomcat/webapps/
+#     ulimits:
+#       nofile:
+#         soft: 20000
+#         hard: 40000
